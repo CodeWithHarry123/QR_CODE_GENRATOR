@@ -15,8 +15,101 @@
 
         body {
             font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Hide scrollbars when popup is active */
+        }
+        
+        /* --- Subscription Popup Styles --- */
+        #subscription-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(10, 10, 20, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
         }
 
+        #subscription-popup.visible {
+            opacity: 1;
+        }
+
+        .popup-content {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transform: scale(0.9);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        #subscription-popup.visible .popup-content {
+            transform: scale(1);
+        }
+
+        .popup-content h2 {
+            font-size: 1.75rem;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 1rem;
+        }
+
+        .popup-content p {
+            color: #ccc;
+            margin-bottom: 1.5rem;
+        }
+
+        .popup-button {
+            display: block;
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            margin-bottom: 0.75rem;
+        }
+
+        #subscribe-btn {
+            background-color: #ff0000;
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4);
+        }
+        #subscribe-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 0, 0, 0.5);
+        }
+
+        #next-btn {
+            background-color: #4a5568; /* gray-700 */
+            color: #a0aec0; /* gray-400 */
+            cursor: not-allowed;
+        }
+
+        #next-btn:not(:disabled) {
+            background-color: #38a169; /* green-600 */
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(56, 161, 105, 0.4);
+        }
+        #next-btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 161, 105, 0.5);
+        }
+
+        /* --- Original QR Generator Styles --- */
         #liquid-background {
             position: fixed;
             top: 0;
@@ -90,6 +183,18 @@
     </style>
 </head>
 <body class="bg-gray-900 text-white flex justify-center min-h-screen p-4 py-12 sm:py-16">
+    
+    <!-- Subscription Popup -->
+    <div id="subscription-popup">
+        <div class="popup-content">
+            <h2 id="popup-title">Subscribe To Continue</h2>
+            <p id="popup-message">To use our services and stay updated with the latest features, please subscribe to our YouTube channel. It's free and helps us grow!</p>
+            <button id="subscribe-btn" class="popup-button">Subscribe on YouTube</button>
+            <button id="next-btn" class="popup-button" disabled>Next</button>
+        </div>
+    </div>
+
+    <!-- Original QR Generator Content -->
     <div id="liquid-background"></div>
     
     <button id="download-btn" class="fixed top-4 left-4 sm:top-6 sm:left-6 bg-white text-gray-900 font-bold py-3 px-5 rounded-full shadow-lg hover:bg-gray-200 transition-all duration-300 opacity-0 scale-0 transform origin-top-left flex items-center gap-2 z-40">
@@ -171,313 +276,369 @@
 
     <script>
         window.onload = () => {
-            // --- Liquid Chrome Background ---
-            function initLiquidChromeBackground() {
-                const container = document.getElementById('liquid-background');
-                const { Renderer, Program, Mesh, Triangle } = ogl;
-                const renderer = new Renderer({ antialias: true });
-                const gl = renderer.gl;
-                container.appendChild(gl.canvas);
-                const vertexShader = `attribute vec2 position;attribute vec2 uv;varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,0.,1.);}`;
-                const fragmentShader = `precision highp float;uniform float uTime;uniform vec3 uResolution;uniform vec3 uBaseColor;uniform float uAmplitude;uniform float uFrequencyX;uniform float uFrequencyY;uniform vec2 uMouse;varying vec2 vUv;vec4 renderImage(vec2 t){vec2 a=t*uResolution.xy,e=(2.*a-uResolution.xy)/min(uResolution.x,uResolution.y);for(float t=1.;t<10.;t++)e.x+=uAmplitude/t*cos(t*uFrequencyX*e.y+uTime+3.14159*uMouse.x),e.y+=uAmplitude/t*cos(t*uFrequencyY*e.x+uTime+3.14159*uMouse.y);return vec4(uBaseColor/(abs(sin(uTime-e.y-e.x))+.01),1.);}void main(){vec4 t=vec4(0.);int a=0;for(int e=-1;e<=1;e++)for(int r=-1;r<=1;r++){vec2 n=vec2(float(e),float(r))*(1./min(uResolution.x,uResolution.y));t+=renderImage(vUv+n),a++;}gl_FragColor=t/float(a);}`;
-                const program = new Program(gl, { vertex: vertexShader, fragment: fragmentShader, uniforms: { uTime: { value: 0 }, uResolution: { value: new Float32Array([gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height]) }, uBaseColor: { value: new Float32Array([.1, .1, .1]) }, uAmplitude: { value: .6 }, uFrequencyX: { value: 3 }, uFrequencyY: { value: 3 }, uMouse: { value: new Float32Array([.5, .5]) } } });
-                const mesh = new Mesh(gl, { geometry: new Triangle(gl), program: program });
-                function resize() { renderer.setSize(container.offsetWidth, container.offsetHeight); const t = program.uniforms.uResolution.value; t[0] = gl.canvas.width, t[1] = gl.canvas.height, t[2] = gl.canvas.width / gl.canvas.height }
-                window.addEventListener("resize", resize, !1), resize();
-                function handleMove(event) { const t = event.touches && event.touches.length > 0, a = t ? event.touches[0] : null, e = t ? a.clientX : event.clientX, r = t ? a.clientY : event.clientY, n = document.body.getBoundingClientRect(), o = (e - n.left) / n.width, i = 1 - (r - n.top) / n.height, s = program.uniforms.uMouse.value; s[0] = o, s[1] = i }
-                document.body.addEventListener("mousemove", handleMove), document.body.addEventListener("touchmove", handleMove);
-                function update(t) { requestAnimationFrame(update), program.uniforms.uTime.value = .001 * t * 1, renderer.render({ scene: mesh }) }
-                requestAnimationFrame(update);
-            }
-            
-            // --- DOM Elements ---
-            const textInput = document.getElementById('text-input');
-            const nameInput = document.getElementById('name-input');
-            const generateBtn = document.getElementById('generate-btn');
-            const styleBtn = document.getElementById('style-btn');
-            const downloadBtn = document.getElementById('download-btn');
-            const finalImageWrapper = document.getElementById('final-image-wrapper');
-            const finalCanvas = document.getElementById('final-canvas');
-            const mainTitle = document.getElementById('main-title');
-            const messageBox = document.getElementById('message-box');
-            const logoInput = document.getElementById('logo-input');
-            const clearLogoBtn = document.getElementById('clear-logo-btn');
-            const styleOptions = document.getElementById('style-options');
-            const presetBtn = document.getElementById('preset-btn');
-            const customBtn = document.getElementById('custom-btn');
-            const colorModal = document.getElementById('color-modal');
-            const color1Input = document.getElementById('color1');
-            const color2Input = document.getElementById('color2');
-            const bgColorInput = document.getElementById('bgColor');
-            const applyGradientBtn = document.getElementById('apply-gradient-btn');
-            const closeModalBtn = document.getElementById('close-modal-btn');
+            // --- Subscription Popup Logic ---
+            const subscriptionPopup = document.getElementById('subscription-popup');
+            const subscribeBtn = document.getElementById('subscribe-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const popupMessage = document.getElementById('popup-message');
+            const youtubeChannelUrl = 'https://www.youtube.com/@Aurelio_Tech-o4u';
 
-            // --- State ---
-            let qrCode = null;
-            let currentStyleIndex = 0;
-            let logoUrl = null;
-            let customGradient = null;
-            let customBgColor = '#4a00e0';
-            let tempCustomGradient = null;
-            let tempCustomBgColor = null;
-            const styles = [
-                { mainColor: '#4a00e0' }, { mainColor: '#800080' }, { mainColor: '#9932CC' }, 
-                { mainColor: '#BA55D3' }, { mainColor: '#C71585' }, { mainColor: '#FF1493' },
-                { mainColor: '#DB7093' }, { mainColor: '#FF69B4' },
-                { mainColor: '#c31432' }, { mainColor: '#800000' }, { mainColor: '#B22222' },
-                { mainColor: '#D2691E' }, { mainColor: '#FF4500' }, { mainColor: '#FF6347' },
-                { mainColor: '#ff8c00' },
-                { mainColor: '#DAA520' }, { mainColor: '#FFD700' }, { mainColor: '#8B4513' },
-                { mainColor: '#0f9b0f' }, { mainColor: '#008080' }, { mainColor: '#228B22' },
-                { mainColor: '#2E8B57' }, { mainColor: '#556B2F' }, { mainColor: '#32CD32' },
-                { mainColor: '#00c4ff' }, { mainColor: '#00008B' }, { mainColor: '#4B0082' },
-                { mainColor: '#4682B4' }, { mainColor: '#6A5ACD' }, { mainColor: '#00BFFF' },
-                { mainColor: '#1E90FF' },
-                { mainColor: '#000000' }, { mainColor: '#2F4F4F' }, { mainColor: '#696969' },
-                { mainColor: '#708090' },
-                { mainColor: '#20B2AA' }, { mainColor: '#F08080' }, { mainColor: '#6495ED' },
-                { mainColor: '#DEB887' }
-            ];
+            const isSubscribed = localStorage.getItem('subscribed') === 'true';
 
-            // --- GSAP Animations ---
-            function runAnimations() {
-                const titleLine1 = "QR Code";
-                const titleLine2 = "Generator";
-                const line1HTML = titleLine1.split('').map(char => `<span class="title-char">${char === ' ' ? '&nbsp;' : char}</span>`).join('');
-                const line2HTML = titleLine2.split('').map(char => `<span class="title-char">${char === ' ' ? '&nbsp;' : char}</span>`).join('');
-                mainTitle.innerHTML = `<div class="leading-tight">${line1HTML}</div><div class="leading-tight">${line2HTML}</div>`;
-                gsap.to('.title-char', { opacity: 1, y: 0, scale: 1, duration: 0.8, stagger: 0.05, ease: 'back.out(1.7)' });
-                const tl = gsap.timeline({ delay: 0.5 });
-                tl.from('.input-container', { opacity: 0, y: 30, duration: 0.5, ease: 'power2.out' })
-                  .from('.logo-container', { opacity: 0, y: 30, duration: 0.5, ease: 'power2.out' }, "-=0.4")
-                  .from('.buttons-container', { opacity: 0, y: 30, duration: 0.5, ease: 'power2.out' }, "-=0.4");
+            if (isSubscribed) {
+                // If already subscribed, hide popup and initialize app
+                subscriptionPopup.style.display = 'none';
+                document.body.style.overflow = 'auto';
+                initializeApp();
+            } else {
+                // If not subscribed, show the popup
+                subscriptionPopup.classList.add('visible');
+                document.body.style.overflow = 'hidden';
             }
 
-            // --- Helper functions ---
-            function drawRoundRect(ctx, x, y, width, height, radius) {
-                ctx.beginPath();
-                ctx.moveTo(x + radius, y);
-                ctx.lineTo(x + width - radius, y);
-                ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-                ctx.lineTo(x + width, y + height - radius);
-                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-                ctx.lineTo(x + radius, y + height);
-                ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-                ctx.lineTo(x, y + radius);
-                ctx.quadraticCurveTo(x, y, x + radius, y);
-                ctx.closePath();
-                ctx.fill();
-            }
-
-            function lightenColor(hex, percent) {
-                hex = hex.replace(/^#/, '');
-                const r = parseInt(hex.substring(0, 2), 16);
-                const g = parseInt(hex.substring(2, 4), 16);
-                const b = parseInt(hex.substring(4, 6), 16);
-                const newR = Math.min(255, r + (255 - r) * (percent / 100));
-                const newG = Math.min(255, g + (255 - g) * (percent / 100));
-                const newB = Math.min(255, b + (255 - b) * (percent / 100));
-                return `#${Math.round(newR).toString(16).padStart(2, '0')}${Math.round(newG).toString(16).padStart(2, '0')}${Math.round(newB).toString(16).padStart(2, '0')}`;
-            }
-            
-            // --- Tilted Card Effect ---
-            function initTiltedCard() {
-                const { animate, spring } = Motion; // Corrected from 'motion' to 'Motion'
-                const card = finalImageWrapper;
+            subscribeBtn.addEventListener('click', () => {
+                // Open YouTube channel in a new tab
+                window.open(youtubeChannelUrl, '_blank');
                 
-                card.addEventListener("mousemove", (e) => {
-                    const rect = card.getBoundingClientRect();
-                    const { width, height, left, top } = rect;
-                    const mouseX = e.clientX - left;
-                    const mouseY = e.clientY - top;
-                    const rotateX = (mouseY / height - 0.5) * -24; // -12 to 12
-                    const rotateY = (mouseX / width - 0.5) * 24; // -12 to 12
+                // Update popup message
+                popupMessage.textContent = 'Thank you! After subscribing, come back and click "Next" to continue.';
+                
+                // Disable subscribe button to prevent multiple clicks
+                subscribeBtn.disabled = true;
+                subscribeBtn.style.opacity = '0.7';
+
+                // Enable the 'Next' button after 5 seconds
+                setTimeout(() => {
+                    nextBtn.disabled = false;
+                }, 5000); // 5 seconds
+            });
+
+            nextBtn.addEventListener('click', () => {
+                // Store subscription status in localStorage
+                localStorage.setItem('subscribed', 'true');
+                
+                // Hide the popup with a fade-out animation
+                subscriptionPopup.style.opacity = '0';
+                setTimeout(() => {
+                    subscriptionPopup.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                    initializeApp(); // Initialize the main app after hiding popup
+                }, 500); // Match transition duration
+            });
+
+
+            // --- Main App Initialization Function ---
+            function initializeApp() {
+                // --- Liquid Chrome Background ---
+                function initLiquidChromeBackground() {
+                    const container = document.getElementById('liquid-background');
+                    // Avoid re-initializing if it's already running
+                    if (container.querySelector('canvas')) return; 
+                    const { Renderer, Program, Mesh, Triangle } = ogl;
+                    const renderer = new Renderer({ antialias: true });
+                    const gl = renderer.gl;
+                    container.appendChild(gl.canvas);
+                    const vertexShader = `attribute vec2 position;attribute vec2 uv;varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,0.,1.);}`;
+                    const fragmentShader = `precision highp float;uniform float uTime;uniform vec3 uResolution;uniform vec3 uBaseColor;uniform float uAmplitude;uniform float uFrequencyX;uniform float uFrequencyY;uniform vec2 uMouse;varying vec2 vUv;vec4 renderImage(vec2 t){vec2 a=t*uResolution.xy,e=(2.*a-uResolution.xy)/min(uResolution.x,uResolution.y);for(float t=1.;t<10.;t++)e.x+=uAmplitude/t*cos(t*uFrequencyX*e.y+uTime+3.14159*uMouse.x),e.y+=uAmplitude/t*cos(t*uFrequencyY*e.x+uTime+3.14159*uMouse.y);return vec4(uBaseColor/(abs(sin(uTime-e.y-e.x))+.01),1.);}void main(){vec4 t=vec4(0.);int a=0;for(int e=-1;e<=1;e++)for(int r=-1;r<=1;r++){vec2 n=vec2(float(e),float(r))*(1./min(uResolution.x,uResolution.y));t+=renderImage(vUv+n),a++;}gl_FragColor=t/float(a);}`;
+                    const program = new Program(gl, { vertex: vertexShader, fragment: fragmentShader, uniforms: { uTime: { value: 0 }, uResolution: { value: new Float32Array([gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height]) }, uBaseColor: { value: new Float32Array([.1, .1, .1]) }, uAmplitude: { value: .6 }, uFrequencyX: { value: 3 }, uFrequencyY: { value: 3 }, uMouse: { value: new Float32Array([.5, .5]) } } });
+                    const mesh = new Mesh(gl, { geometry: new Triangle(gl), program: program });
+                    function resize() { renderer.setSize(container.offsetWidth, container.offsetHeight); const t = program.uniforms.uResolution.value; t[0] = gl.canvas.width, t[1] = gl.canvas.height, t[2] = gl.canvas.width / gl.canvas.height }
+                    window.addEventListener("resize", resize, !1), resize();
+                    function handleMove(event) { const t = event.touches && event.touches.length > 0, a = t ? event.touches[0] : null, e = t ? a.clientX : event.clientX, r = t ? a.clientY : event.clientY, n = document.body.getBoundingClientRect(), o = (e - n.left) / n.width, i = 1 - (r - n.top) / n.height, s = program.uniforms.uMouse.value; s[0] = o, s[1] = i }
+                    document.body.addEventListener("mousemove", handleMove), document.body.addEventListener("touchmove", handleMove);
+                    function update(t) { requestAnimationFrame(update), program.uniforms.uTime.value = .001 * t * 1, renderer.render({ scene: mesh }) }
+                    requestAnimationFrame(update);
+                }
+                
+                // --- DOM Elements ---
+                const textInput = document.getElementById('text-input');
+                const nameInput = document.getElementById('name-input');
+                const generateBtn = document.getElementById('generate-btn');
+                const styleBtn = document.getElementById('style-btn');
+                const downloadBtn = document.getElementById('download-btn');
+                const finalImageWrapper = document.getElementById('final-image-wrapper');
+                const finalCanvas = document.getElementById('final-canvas');
+                const mainTitle = document.getElementById('main-title');
+                const messageBox = document.getElementById('message-box');
+                const logoInput = document.getElementById('logo-input');
+                const clearLogoBtn = document.getElementById('clear-logo-btn');
+                const styleOptions = document.getElementById('style-options');
+                const presetBtn = document.getElementById('preset-btn');
+                const customBtn = document.getElementById('custom-btn');
+                const colorModal = document.getElementById('color-modal');
+                const color1Input = document.getElementById('color1');
+                const color2Input = document.getElementById('color2');
+                const bgColorInput = document.getElementById('bgColor');
+                const applyGradientBtn = document.getElementById('apply-gradient-btn');
+                const closeModalBtn = document.getElementById('close-modal-btn');
+
+                // --- State ---
+                let qrCode = null;
+                let currentStyleIndex = 0;
+                let logoUrl = null;
+                let customGradient = null;
+                let customBgColor = '#4a00e0';
+                let tempCustomGradient = null;
+                let tempCustomBgColor = null;
+                const styles = [
+                    { mainColor: '#4a00e0' }, { mainColor: '#800080' }, { mainColor: '#9932CC' }, 
+                    { mainColor: '#BA55D3' }, { mainColor: '#C71585' }, { mainColor: '#FF1493' },
+                    { mainColor: '#DB7093' }, { mainColor: '#FF69B4' },
+                    { mainColor: '#c31432' }, { mainColor: '#800000' }, { mainColor: '#B22222' },
+                    { mainColor: '#D2691E' }, { mainColor: '#FF4500' }, { mainColor: '#FF6347' },
+                    { mainColor: '#ff8c00' },
+                    { mainColor: '#DAA520' }, { mainColor: '#FFD700' }, { mainColor: '#8B4513' },
+                    { mainColor: '#0f9b0f' }, { mainColor: '#008080' }, { mainColor: '#228B22' },
+                    { mainColor: '#2E8B57' }, { mainColor: '#556B2F' }, { mainColor: '#32CD32' },
+                    { mainColor: '#00c4ff' }, { mainColor: '#00008B' }, { mainColor: '#4B0082' },
+                    { mainColor: '#4682B4' }, { mainColor: '#6A5ACD' }, { mainColor: '#00BFFF' },
+                    { mainColor: '#1E90FF' },
+                    { mainColor: '#000000' }, { mainColor: '#2F4F4F' }, { mainColor: '#696969' },
+                    { mainColor: '#708090' },
+                    { mainColor: '#20B2AA' }, { mainColor: '#F08080' }, { mainColor: '#6495ED' },
+                    { mainColor: '#DEB887' }
+                ];
+
+                // --- GSAP Animations ---
+                function runAnimations() {
+                    const titleLine1 = "QR Code";
+                    const titleLine2 = "Generator";
+                    const line1HTML = titleLine1.split('').map(char => `<span class="title-char">${char === ' ' ? '&nbsp;' : char}</span>`).join('');
+                    const line2HTML = titleLine2.split('').map(char => `<span class="title-char">${char === ' ' ? '&nbsp;' : char}</span>`).join('');
+                    mainTitle.innerHTML = `<div class="leading-tight">${line1HTML}</div><div class="leading-tight">${line2HTML}</div>`;
+                    gsap.to('.title-char', { opacity: 1, y: 0, scale: 1, duration: 0.8, stagger: 0.05, ease: 'back.out(1.7)' });
+                    const tl = gsap.timeline({ delay: 0.5 });
+                    tl.from('.input-container', { opacity: 0, y: 30, duration: 0.5, ease: 'power2.out' })
+                      .from('.logo-container', { opacity: 0, y: 30, duration: 0.5, ease: 'power2.out' }, "-=0.4")
+                      .from('.buttons-container', { opacity: 0, y: 30, duration: 0.5, ease: 'power2.out' }, "-=0.4");
+                }
+
+                // --- Helper functions ---
+                function drawRoundRect(ctx, x, y, width, height, radius) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + radius, y);
+                    ctx.lineTo(x + width - radius, y);
+                    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                    ctx.lineTo(x + width, y + height - radius);
+                    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                    ctx.lineTo(x + radius, y + height);
+                    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                    ctx.lineTo(x, y + radius);
+                    ctx.quadraticCurveTo(x, y, x + radius, y);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                function lightenColor(hex, percent) {
+                    hex = hex.replace(/^#/, '');
+                    const r = parseInt(hex.substring(0, 2), 16);
+                    const g = parseInt(hex.substring(2, 4), 16);
+                    const b = parseInt(hex.substring(4, 6), 16);
+                    const newR = Math.min(255, r + (255 - r) * (percent / 100));
+                    const newG = Math.min(255, g + (255 - g) * (percent / 100));
+                    const newB = Math.min(255, b + (255 - b) * (percent / 100));
+                    return `#${Math.round(newR).toString(16).padStart(2, '0')}${Math.round(newG).toString(16).padStart(2, '0')}${Math.round(newB).toString(16).padStart(2, '0')}`;
+                }
+                
+                // --- Tilted Card Effect ---
+                function initTiltedCard() {
+                    const { animate, spring } = Motion;
+                    const card = finalImageWrapper;
                     
-                    animate(card, {
-                        transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`
-                    }, {
-                        easing: spring({ damping: 25, stiffness: 300, mass: 0.5 })
+                    card.addEventListener("mousemove", (e) => {
+                        const rect = card.getBoundingClientRect();
+                        const { width, height, left, top } = rect;
+                        const mouseX = e.clientX - left;
+                        const mouseY = e.clientY - top;
+                        const rotateX = (mouseY / height - 0.5) * -24; // -12 to 12
+                        const rotateY = (mouseX / width - 0.5) * 24; // -12 to 12
+                        
+                        animate(card, {
+                            transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`
+                        }, {
+                            easing: spring({ damping: 25, stiffness: 300, mass: 0.5 })
+                        });
                     });
-                });
 
-                card.addEventListener("mouseleave", () => {
-                     animate(card, {
-                        transform: `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`
-                     }, {
-                        easing: spring({ damping: 25, stiffness: 300, mass: 0.5 })
+                    card.addEventListener("mouseleave", () => {
+                         animate(card, {
+                            transform: `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`
+                         }, {
+                            easing: spring({ damping: 25, stiffness: 300, mass: 0.5 })
+                        });
                     });
-                });
-            }
-
-            // --- Core QR & Canvas Functions ---
-            async function drawFinalImage(targetCanvas, scale = 1) {
-                const text = textInput.value.trim();
-                const nameText = nameInput.value.trim();
-                if (!text) {
-                    if (scale === 1) showCustomMessage();
-                    return;
                 }
 
-                const finalCtx = targetCanvas.getContext('2d');
-                const canvasWidth = targetCanvas.width;
-                const canvasHeight = targetCanvas.height;
-                
-                finalCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+                // --- Core QR & Canvas Functions ---
+                async function drawFinalImage(targetCanvas, scale = 1) {
+                    const text = textInput.value.trim();
+                    const nameText = nameInput.value.trim();
+                    if (!text) {
+                        if (scale === 1) showCustomMessage();
+                        return;
+                    }
 
-                const qrSize = 256 * scale;
-                const cardPadding = 20 * scale;
-                const currentStyle = styles[currentStyleIndex];
+                    const finalCtx = targetCanvas.getContext('2d');
+                    const canvasWidth = targetCanvas.width;
+                    const canvasHeight = targetCanvas.height;
+                    
+                    finalCtx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-                finalCtx.fillStyle = customBgColor || currentStyle.mainColor;
-                drawRoundRect(finalCtx, 0, 0, canvasWidth, canvasHeight, 20 * scale);
+                    const qrSize = 256 * scale;
+                    const cardPadding = 20 * scale;
+                    const currentStyle = styles[currentStyleIndex];
 
-                const options = {
-                    width: qrSize, height: qrSize, data: text, margin: 0,
-                    qrOptions: { errorCorrectionLevel: 'H' },
-                    dotsOptions: { type: 'rounded' },
-                    backgroundOptions: { color: '#ffffff' },
-                    imageOptions: { crossOrigin: "anonymous", margin: 4 * scale, hideBackgroundDots: true }
-                };
-                
-                if (customGradient) {
-                    options.dotsOptions.gradient = customGradient;
-                } else {
-                    const mainColor = currentStyle.mainColor;
-                    const lightColor = lightenColor(mainColor, 70);
-                    options.dotsOptions.gradient = {
-                        type: 'linear', rotation: 45,
-                        colorStops: [ { offset: 0, color: mainColor }, { offset: 1, color: lightColor } ]
+                    finalCtx.fillStyle = customBgColor || currentStyle.mainColor;
+                    drawRoundRect(finalCtx, 0, 0, canvasWidth, canvasHeight, 20 * scale);
+
+                    const options = {
+                        width: qrSize, height: qrSize, data: text, margin: 0,
+                        qrOptions: { errorCorrectionLevel: 'H' },
+                        dotsOptions: { type: 'rounded' },
+                        backgroundOptions: { color: '#ffffff' },
+                        imageOptions: { crossOrigin: "anonymous", margin: 4 * scale, hideBackgroundDots: true }
                     };
-                }
+                    
+                    if (customGradient) {
+                        options.dotsOptions.gradient = customGradient;
+                    } else {
+                        const mainColor = currentStyle.mainColor;
+                        const lightColor = lightenColor(mainColor, 70);
+                        options.dotsOptions.gradient = {
+                            type: 'linear', rotation: 45,
+                            colorStops: [ { offset: 0, color: mainColor }, { offset: 1, color: lightColor } ]
+                        };
+                    }
 
-                if (logoUrl) options.image = logoUrl;
-                
-                qrCode = new QRCodeStyling(options);
-                const qrBlob = await qrCode.getRawData('png');
-                const qrImage = await createImageBitmap(qrBlob);
+                    if (logoUrl) options.image = logoUrl;
+                    
+                    qrCode = new QRCodeStyling(options);
+                    const qrBlob = await qrCode.getRawData('png');
+                    const qrImage = await createImageBitmap(qrBlob);
 
-                const qrX = (canvasWidth - qrSize) / 2;
-                const qrY = cardPadding;
-                finalCtx.fillStyle = '#ffffff';
-                drawRoundRect(finalCtx, qrX - (10 * scale), qrY - (10 * scale), qrSize + (20 * scale), qrSize + (20 * scale), 15 * scale);
-                finalCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-
-                if (nameText) {
+                    const qrX = (canvasWidth - qrSize) / 2;
+                    const qrY = cardPadding;
                     finalCtx.fillStyle = '#ffffff';
-                    finalCtx.font = `500 ${24 * scale}px Inter`;
-                    finalCtx.textAlign = 'center';
-                    finalCtx.textBaseline = 'middle';
-                    const textY = qrY + qrSize + (45 * scale);
-                    const fullText = `@ ${nameText}`;
-                    finalCtx.fillText(fullText, canvasWidth / 2, textY);
-                }
-            }
+                    drawRoundRect(finalCtx, qrX - (10 * scale), qrY - (10 * scale), qrSize + (20 * scale), qrSize + (20 * scale), 15 * scale);
+                    finalCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
-            async function generateAndShowImage() {
-                if (finalImageWrapper.classList.contains('scale-0')) {
-                    gsap.to(finalImageWrapper, { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out(1.7)' });
-                    gsap.to(downloadBtn, { scale: 1, opacity: 1, duration: 0.5, ease: 'power2.out', delay: 0.3 });
+                    if (nameText) {
+                        finalCtx.fillStyle = '#ffffff';
+                        finalCtx.font = `500 ${24 * scale}px Inter`;
+                        finalCtx.textAlign = 'center';
+                        finalCtx.textBaseline = 'middle';
+                        const textY = qrY + qrSize + (45 * scale);
+                        const fullText = `@ ${nameText}`;
+                        finalCtx.fillText(fullText, canvasWidth / 2, textY);
+                    }
                 }
-                await drawFinalImage(finalCanvas, 1);
-            }
-            
-            function applyPresetStyle() {
-                customGradient = null;
-                customBgColor = null;
-                currentStyleIndex = (currentStyleIndex + 1) % styles.length;
-                generateAndShowImage();
-            }
 
-            async function downloadImage() {
-                const scaleFactor = 3; // High quality download
-                const offscreenCanvas = document.createElement('canvas');
-                offscreenCanvas.width = finalCanvas.width * scaleFactor;
-                offscreenCanvas.height = finalCanvas.height * scaleFactor;
+                async function generateAndShowImage() {
+                    if (finalImageWrapper.classList.contains('scale-0')) {
+                        gsap.to(finalImageWrapper, { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out(1.7)' });
+                        gsap.to(downloadBtn, { scale: 1, opacity: 1, duration: 0.5, ease: 'power2.out', delay: 0.3 });
+                    }
+                    await drawFinalImage(finalCanvas, 1);
+                }
                 
-                await drawFinalImage(offscreenCanvas, scaleFactor);
-
-                const link = document.createElement('a');
-                link.download = 'qrcode-card.png';
-                link.href = offscreenCanvas.toDataURL('image/png');
-                link.click();
-            }
-
-            function showCustomMessage() {
-                gsap.fromTo(messageBox, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out', onComplete: () => { gsap.to(messageBox, { opacity: 0, y: 40, duration: 0.3, ease: 'power2.in', delay: 2 }); }});
-            }
-
-            function handleRealtimePreview() {
-                if (!textInput.value.trim()) return;
-                customGradient = {
-                    type: 'linear', rotation: 0,
-                    colorStops: [ { offset: 0, color: color1Input.value }, { offset: 1, color: color2Input.value } ]
-                };
-                customBgColor = bgColorInput.value;
-                generateAndShowImage();
-            }
-
-            // --- Event Listeners ---
-            generateBtn.addEventListener('click', generateAndShowImage);
-            downloadBtn.addEventListener('click', downloadImage);
-            textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') generateAndShowImage(); });
-            nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') generateAndShowImage(); });
-            styleBtn.addEventListener('click', () => { styleOptions.classList.toggle('hidden'); styleOptions.classList.toggle('flex'); });
-            presetBtn.addEventListener('click', applyPresetStyle);
-            
-            customBtn.addEventListener('click', () => {
-                tempCustomGradient = customGradient ? { ...customGradient, colorStops: [...customGradient.colorStops] } : null;
-                tempCustomBgColor = customBgColor;
-                colorModal.classList.remove('hidden');
-                colorModal.classList.add('flex');
-                gsap.to(colorModal, {scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(1.7)'});
-            });
-
-            closeModalBtn.addEventListener('click', () => {
-                customGradient = tempCustomGradient;
-                customBgColor = tempCustomBgColor;
-                if (textInput.value.trim()) generateAndShowImage();
-                gsap.to(colorModal, {scale: 0, opacity: 0, duration: 0.3, ease: 'back.in(1.7)', onComplete: () => {
-                    colorModal.classList.add('hidden');
-                    colorModal.classList.remove('flex');
-                }});
-            });
-
-            applyGradientBtn.addEventListener('click', () => {
-                handleRealtimePreview(); // Final apply
-                gsap.to(colorModal, {scale: 0, opacity: 0, duration: 0.3, ease: 'back.in(1.7)', onComplete: () => {
-                    colorModal.classList.add('hidden');
-                    colorModal.classList.remove('flex');
-                }});
-            });
-            
-            color1Input.addEventListener('input', handleRealtimePreview);
-            color2Input.addEventListener('input', handleRealtimePreview);
-            bgColorInput.addEventListener('input', handleRealtimePreview);
-
-            logoInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        logoUrl = event.target.result;
-                        if (textInput.value.trim()) generateAndShowImage();
-                        clearLogoBtn.classList.remove('hidden');
-                    };
-                    reader.readAsDataURL(file);
+                function applyPresetStyle() {
+                    customGradient = null;
+                    customBgColor = null;
+                    currentStyleIndex = (currentStyleIndex + 1) % styles.length;
+                    generateAndShowImage();
                 }
-            });
 
-            clearLogoBtn.addEventListener('click', () => {
-                logoUrl = null;
-                logoInput.value = '';
-                if (textInput.value.trim()) generateAndShowImage();
-                clearLogoBtn.classList.add('hidden');
-            });
+                async function downloadImage() {
+                    const scaleFactor = 3; // High quality download
+                    const offscreenCanvas = document.createElement('canvas');
+                    offscreenCanvas.width = finalCanvas.width * scaleFactor;
+                    offscreenCanvas.height = finalCanvas.height * scaleFactor;
+                    
+                    await drawFinalImage(offscreenCanvas, scaleFactor);
 
-            // --- Initializations ---
-            initLiquidChromeBackground();
-            initTiltedCard();
-            runAnimations();
+                    const link = document.createElement('a');
+                    link.download = 'qrcode-card.png';
+                    link.href = offscreenCanvas.toDataURL('image/png');
+                    link.click();
+                }
+
+                function showCustomMessage() {
+                    gsap.fromTo(messageBox, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out', onComplete: () => { gsap.to(messageBox, { opacity: 0, y: 40, duration: 0.3, ease: 'power2.in', delay: 2 }); }});
+                }
+
+                function handleRealtimePreview() {
+                    if (!textInput.value.trim()) return;
+                    customGradient = {
+                        type: 'linear', rotation: 0,
+                        colorStops: [ { offset: 0, color: color1Input.value }, { offset: 1, color: color2Input.value } ]
+                    };
+                    customBgColor = bgColorInput.value;
+                    generateAndShowImage();
+                }
+
+                // --- Event Listeners ---
+                generateBtn.addEventListener('click', generateAndShowImage);
+                downloadBtn.addEventListener('click', downloadImage);
+                textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') generateAndShowImage(); });
+                nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') generateAndShowImage(); });
+                styleBtn.addEventListener('click', () => { styleOptions.classList.toggle('hidden'); styleOptions.classList.toggle('flex'); });
+                presetBtn.addEventListener('click', applyPresetStyle);
+                
+                customBtn.addEventListener('click', () => {
+                    tempCustomGradient = customGradient ? { ...customGradient, colorStops: [...customGradient.colorStops] } : null;
+                    tempCustomBgColor = customBgColor;
+                    colorModal.classList.remove('hidden');
+                    colorModal.classList.add('flex');
+                    gsap.to(colorModal, {scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(1.7)'});
+                });
+
+                closeModalBtn.addEventListener('click', () => {
+                    customGradient = tempCustomGradient;
+                    customBgColor = tempCustomBgColor;
+                    if (textInput.value.trim()) generateAndShowImage();
+                    gsap.to(colorModal, {scale: 0, opacity: 0, duration: 0.3, ease: 'back.in(1.7)', onComplete: () => {
+                        colorModal.classList.add('hidden');
+                        colorModal.classList.remove('flex');
+                    }});
+                });
+
+                applyGradientBtn.addEventListener('click', () => {
+                    handleRealtimePreview(); // Final apply
+                    gsap.to(colorModal, {scale: 0, opacity: 0, duration: 0.3, ease: 'back.in(1.7)', onComplete: () => {
+                        colorModal.classList.add('hidden');
+                        colorModal.classList.remove('flex');
+                    }});
+                });
+                
+                color1Input.addEventListener('input', handleRealtimePreview);
+                color2Input.addEventListener('input', handleRealtimePreview);
+                bgColorInput.addEventListener('input', handleRealtimePreview);
+
+                logoInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            logoUrl = event.target.result;
+                            if (textInput.value.trim()) generateAndShowImage();
+                            clearLogoBtn.classList.remove('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+
+                clearLogoBtn.addEventListener('click', () => {
+                    logoUrl = null;
+                    logoInput.value = '';
+                    if (textInput.value.trim()) generateAndShowImage();
+                    clearLogoBtn.classList.add('hidden');
+                });
+
+                // --- Initializations ---
+                initLiquidChromeBackground();
+                initTiltedCard();
+                runAnimations();
+            }
         };
     </script>
 </body>
