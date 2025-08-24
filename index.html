@@ -213,7 +213,7 @@
 
         #message-box {
             transition: opacity 0.3s ease, transform 0.3s ease;
-            z-index: 110; /* Ensure it's above the popup */
+            z-index: 110; 
         }
 
         /* Custom Color Picker Modal */
@@ -243,7 +243,10 @@
 </head>
 <body class="bg-gray-900 text-white flex justify-center min-h-screen p-4 py-12 sm:py-16">
     
-    <!-- Subscription Popup -->
+    <div id="subscription-warning-box" class="fixed top-8 left-1/2 -translate-x-1/2 bg-black text-white py-3 px-6 rounded-full shadow-lg opacity-0 z-[120]" style="transform: translateY(-80px);">
+        <!-- Message is set by JavaScript -->
+    </div>
+
     <div id="subscription-popup">
         <div class="popup-content">
             <div id="popup-initial-content">
@@ -272,7 +275,6 @@
         </div>
     </div>
 
-    <!-- Original QR Generator Content -->
     <div id="liquid-background"></div>
     
     <button id="download-btn" class="fixed top-4 left-4 sm:top-6 sm:left-6 bg-white text-gray-900 font-bold py-3 px-5 rounded-full shadow-lg hover:bg-gray-200 transition-all duration-300 opacity-0 scale-0 transform origin-top-left flex items-center gap-2 z-40">
@@ -325,7 +327,6 @@
     </div>
 
 
-    <!-- Custom Color Picker Modal -->
     <div id="color-modal" class="fixed inset-0 bg-black/50 items-start justify-center pt-20 sm:pt-24 hidden transform scale-0 opacity-0">
         <div class="bg-gray-900/80 backdrop-blur-sm border border-white/20 rounded-2xl p-8 text-center space-y-4 w-full max-w-xs">
             <h3 class="text-2xl font-bold">Custom Style</h3>
@@ -363,21 +364,9 @@
             const popupLoaderContent = document.getElementById('popup-loader-content');
             const popupSuccessContent = document.getElementById('popup-success-content');
             const youtubeChannelUrl = 'https://www.youtube.com/@Aurelio_Tech-o4u';
+            const subscriptionWarningBox = document.getElementById('subscription-warning-box');
 
             const isSubscribed = localStorage.getItem('subscribed') === 'true';
-
-            // --- Reusable Message Function ---
-            function showAppMessage(message, isError = true) {
-                const messageBox = document.getElementById('message-box');
-                messageBox.textContent = message;
-                messageBox.style.backgroundColor = isError ? '#ef4444' : '#22c55e'; // red-500 or green-500
-                gsap.fromTo(messageBox, 
-                    { opacity: 0, y: 40 }, 
-                    { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out', onComplete: () => { 
-                        gsap.to(messageBox, { opacity: 0, y: 40, duration: 0.3, ease: 'power2.in', delay: 2.5 }); 
-                    }}
-                );
-            }
 
             if (isSubscribed) {
                 // If already subscribed, hide popup and initialize app
@@ -401,16 +390,38 @@
                 subscribeBtn.disabled = true;
                 subscribeBtn.style.opacity = '0.7';
 
-                // **FORCE CHECK**: Enable the 'Next' button after 8 seconds
+                // Enable the 'Next' button after 8 seconds
                 setTimeout(() => {
                     nextBtn.disabled = false;
                 }, 8000); // 8 seconds delay
             });
 
             nextBtn.addEventListener('click', () => {
-                // **FORCE CHECK**: Check if the button is disabled and show a message
+                // Check if the button is disabled and show a message
                 if (nextBtn.disabled) {
-                    showAppMessage("Kindly subscribe to the channel first!", true);
+                    // Show the dedicated subscription warning message
+                    subscriptionWarningBox.textContent = "पहले सब्सक्राइब करें फिर यह बटन उपलब्ध किया जाएगा";
+                    gsap.to(subscriptionWarningBox, { 
+                        y: 0, 
+                        opacity: 1, 
+                        duration: 0.4, 
+                        ease: 'power2.out', 
+                        onComplete: () => {
+                            gsap.to(subscriptionWarningBox, { 
+                                opacity: 0, 
+                                y: -80, 
+                                duration: 0.4, 
+                                ease: 'power2.in', 
+                                delay: 2.5 
+                            });
+                        }
+                    });
+                    
+                    // Vibrate if the API is supported
+                    if (navigator.vibrate) {
+                        navigator.vibrate(100);
+                    }
+                    
                     // Add a shake animation for feedback
                     gsap.fromTo(nextBtn, {x: -6}, {x: 6, duration: 0.05, repeat: 5, yoyo: true, ease: 'power1.inOut', clearProps: 'x'});
                     return; // Stop the function if button is disabled
@@ -487,6 +498,7 @@
                 const bgColorInput = document.getElementById('bgColor');
                 const applyGradientBtn = document.getElementById('apply-gradient-btn');
                 const closeModalBtn = document.getElementById('close-modal-btn');
+                const messageBox = document.getElementById('message-box');
 
                 // --- State ---
                 let qrCode = null;
@@ -556,6 +568,12 @@
                     return `#${Math.round(newR).toString(16).padStart(2, '0')}${Math.round(newG).toString(16).padStart(2, '0')}${Math.round(newB).toString(16).padStart(2, '0')}`;
                 }
                 
+                function showQRMessage(message) {
+                    messageBox.textContent = message;
+                    messageBox.style.backgroundColor = '#ef4444'; // red-500
+                    gsap.fromTo(messageBox, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out', onComplete: () => { gsap.to(messageBox, { opacity: 0, y: 40, duration: 0.3, ease: 'power2.in', delay: 2 }); }});
+                }
+
                 // --- Tilted Card Effect ---
                 function initTiltedCard() {
                     const { animate, spring } = Motion;
@@ -590,7 +608,7 @@
                     const text = textInput.value.trim();
                     const nameText = nameInput.value.trim();
                     if (!text) {
-                        if (scale === 1) showAppMessage('Please enter some text or a URL!', true);
+                        if (scale === 1) showQRMessage('Please enter some text or a URL!');
                         return;
                     }
 
