@@ -213,6 +213,7 @@
 
         #message-box {
             transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 110; /* Ensure it's above the popup */
         }
 
         /* Custom Color Picker Modal */
@@ -365,6 +366,19 @@
 
             const isSubscribed = localStorage.getItem('subscribed') === 'true';
 
+            // --- Reusable Message Function ---
+            function showAppMessage(message, isError = true) {
+                const messageBox = document.getElementById('message-box');
+                messageBox.textContent = message;
+                messageBox.style.backgroundColor = isError ? '#ef4444' : '#22c55e'; // red-500 or green-500
+                gsap.fromTo(messageBox, 
+                    { opacity: 0, y: 40 }, 
+                    { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out', onComplete: () => { 
+                        gsap.to(messageBox, { opacity: 0, y: 40, duration: 0.3, ease: 'power2.in', delay: 2.5 }); 
+                    }}
+                );
+            }
+
             if (isSubscribed) {
                 // If already subscribed, hide popup and initialize app
                 subscriptionPopup.style.display = 'none';
@@ -387,14 +401,22 @@
                 subscribeBtn.disabled = true;
                 subscribeBtn.style.opacity = '0.7';
 
-                // Enable the 'Next' button after 5 seconds
+                // **FORCE CHECK**: Enable the 'Next' button after 8 seconds
                 setTimeout(() => {
                     nextBtn.disabled = false;
-                }, 5000); // 5 seconds
+                }, 8000); // 8 seconds delay
             });
 
             nextBtn.addEventListener('click', () => {
-                // Hide initial content and show loader
+                // **FORCE CHECK**: Check if the button is disabled and show a message
+                if (nextBtn.disabled) {
+                    showAppMessage("Kindly subscribe to the channel first!", true);
+                    // Add a shake animation for feedback
+                    gsap.fromTo(nextBtn, {x: -6}, {x: 6, duration: 0.05, repeat: 5, yoyo: true, ease: 'power1.inOut', clearProps: 'x'});
+                    return; // Stop the function if button is disabled
+                }
+
+                // --- If button is enabled, proceed with verification ---
                 popupInitialContent.classList.add('hidden');
                 popupLoaderContent.classList.remove('hidden');
                 
@@ -454,7 +476,6 @@
                 const finalImageWrapper = document.getElementById('final-image-wrapper');
                 const finalCanvas = document.getElementById('final-canvas');
                 const mainTitle = document.getElementById('main-title');
-                const messageBox = document.getElementById('message-box');
                 const logoInput = document.getElementById('logo-input');
                 const clearLogoBtn = document.getElementById('clear-logo-btn');
                 const styleOptions = document.getElementById('style-options');
@@ -569,7 +590,7 @@
                     const text = textInput.value.trim();
                     const nameText = nameInput.value.trim();
                     if (!text) {
-                        if (scale === 1) showCustomMessage();
+                        if (scale === 1) showAppMessage('Please enter some text or a URL!', true);
                         return;
                     }
 
@@ -655,10 +676,6 @@
                     link.download = 'qrcode-card.png';
                     link.href = offscreenCanvas.toDataURL('image/png');
                     link.click();
-                }
-
-                function showCustomMessage() {
-                    gsap.fromTo(messageBox, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out', onComplete: () => { gsap.to(messageBox, { opacity: 0, y: 40, duration: 0.3, ease: 'power2.in', delay: 2 }); }});
                 }
 
                 function handleRealtimePreview() {
