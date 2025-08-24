@@ -50,7 +50,9 @@
             width: 400px;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             transform: scale(0.9);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), height 0.4s ease;
+            min-height: 280px; /* Set a min-height for smooth transition */
+            overflow: hidden;
         }
         
         #subscription-popup.visible .popup-content {
@@ -108,6 +110,62 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(56, 161, 105, 0.5);
         }
+
+        /* --- Verification & Success Styles --- */
+        .loader-container, .success-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 220px;
+        }
+
+        .spinner {
+            border: 5px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            border-top-color: #fff;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .verifying-text {
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .success-icon {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 1rem;
+        }
+        
+        .verified-title {
+            font-size: 1.75rem;
+            font-weight: 900;
+            color: #48bb78; /* green-500 */
+            margin-bottom: 0.5rem;
+        }
+        
+        .contribution-text {
+            color: #fff;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .connect-text {
+            color: #a0aec0; /* gray-400 */
+            font-size: 0.9rem;
+        }
+
 
         /* --- Original QR Generator Styles --- */
         #liquid-background {
@@ -187,10 +245,29 @@
     <!-- Subscription Popup -->
     <div id="subscription-popup">
         <div class="popup-content">
-            <h2 id="popup-title">Subscribe To Continue</h2>
-            <p id="popup-message">To use our services and stay updated with the latest features, please subscribe to our YouTube channel. It's free and helps us grow!</p>
-            <button id="subscribe-btn" class="popup-button">Subscribe on YouTube</button>
-            <button id="next-btn" class="popup-button" disabled>Next</button>
+            <div id="popup-initial-content">
+                <h2 id="popup-title">Subscribe To Continue</h2>
+                <p id="popup-message">To use our services and stay updated with the latest features, please subscribe to our YouTube channel. It's free and helps us grow!</p>
+                <button id="subscribe-btn" class="popup-button">Subscribe on YouTube</button>
+                <button id="next-btn" class="popup-button" disabled>Next</button>
+            </div>
+            <div id="popup-loader-content" class="hidden">
+                 <div class="loader-container">
+                    <div class="spinner"></div>
+                    <p class="verifying-text">Verifying your subscription...</p>
+                </div>
+            </div>
+            <div id="popup-success-content" class="hidden">
+                 <div class="success-container">
+                    <svg class="success-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#48bb78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <h2 class="verified-title">You're Verified!</h2>
+                    <p class="contribution-text">Thank you for your contribution.</p>
+                    <p class="connect-text">Stay connected for exciting updates and new features!</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -281,6 +358,9 @@
             const subscribeBtn = document.getElementById('subscribe-btn');
             const nextBtn = document.getElementById('next-btn');
             const popupMessage = document.getElementById('popup-message');
+            const popupInitialContent = document.getElementById('popup-initial-content');
+            const popupLoaderContent = document.getElementById('popup-loader-content');
+            const popupSuccessContent = document.getElementById('popup-success-content');
             const youtubeChannelUrl = 'https://www.youtube.com/@Aurelio_Tech-o4u';
 
             const isSubscribed = localStorage.getItem('subscribed') === 'true';
@@ -314,16 +394,31 @@
             });
 
             nextBtn.addEventListener('click', () => {
-                // Store subscription status in localStorage
-                localStorage.setItem('subscribed', 'true');
+                // Hide initial content and show loader
+                popupInitialContent.classList.add('hidden');
+                popupLoaderContent.classList.remove('hidden');
                 
-                // Hide the popup with a fade-out animation
-                subscriptionPopup.style.opacity = '0';
+                // Start 8-second verification timer
                 setTimeout(() => {
-                    subscriptionPopup.style.display = 'none';
-                    document.body.style.overflow = 'auto';
-                    initializeApp(); // Initialize the main app after hiding popup
-                }, 500); // Match transition duration
+                    // Hide loader and show success message
+                    popupLoaderContent.classList.add('hidden');
+                    popupSuccessContent.classList.remove('hidden');
+                    
+                    // Wait a few seconds on the success screen before closing
+                    setTimeout(() => {
+                        // Store subscription status in localStorage
+                        localStorage.setItem('subscribed', 'true');
+                        
+                        // Hide the popup with a fade-out animation
+                        subscriptionPopup.style.opacity = '0';
+                        setTimeout(() => {
+                            subscriptionPopup.style.display = 'none';
+                            document.body.style.overflow = 'auto';
+                            initializeApp(); // Initialize the main app after hiding popup
+                        }, 500); // Match transition duration
+                    }, 4000); // Show success message for 4 seconds
+
+                }, 8000); // 8 seconds for verification
             });
 
 
@@ -643,3 +738,4 @@
     </script>
 </body>
 </html>
+
